@@ -1,0 +1,124 @@
+Certyfikaty cyfrowe, czym właściwie są, jakie są ich rodzaje? Dlaczego są tak ważne w zapewnianiu bezpiecznej komunikacji w internecie? Jak je generować oraz użyć w swoich aplikacjach?
+
+Zainstaluj DevToys
+
+
+Wstęp do certyfikatów​
+
+Podstawowe elementy certyfikatów - klucz publiczny i prywatny
+
+Różne rodzaje certyfikatów​
+
+Gdzie są używane certyfikaty?​
+
+Jak wygenerować swój certyfikat?​
+
+Jak certyfikaty zapewniają bezpieczeństwo aplikacjom?​
+
+Jak wykorzystać certyfikat w swojej aplikacji?
+	Bezpośrednio w apce .NET
+	W nginx 
+	W Azure
+
+
+
+
+SLAJD 1 - CERTYFIAKTY CYFROWE
+SLAJD 2 - AGENDA
+SLAJD 3 - CO TO JEST CERTYFIKAT CYFROWY?
+Certyfikat cyfrowy czyli rodzaj dokumentu służącego do weryfikacji tożsamości podmiotu w sieci.
+
+Z czego się składa?
+Kiedy mówimy o certyfikatach cyfrowy mówimy o szyfrowaniu asymetrycznym tzn. wykorzystującym parę kluczy: publiczny i prywatny. Klucz prywatny jest kluczem tajnym i służy do 
+odszyfrowywania danych zaszyfrowanych kluczem publicznym.
+
+Podstawowe algorytmy szyfrowania asymetrycznego to:
+RSA - szyfrowanie danych, podpisy cyfrowe, wymiana kluczy w TLS/SSL
+DSA - podpisy cyfrowe w certyfikatach i systemach uwierzytelnienia
+ECC - szyfrowanie, podpisy cyfrowe, protokoły wymiany kluczy
+
+W SSL/TLS najbardziej popularny algorytm teraz to ECDHE
+
+Dane właściciela:
+CN (Common Name) - Nazwa wspólna
+O (Organization)
+OU (Organization Unit)
+C (Country)
+ST (State) stan/województwo
+L (Locality) Miasto/miejscowość
+E (Email) opcjonalne
+
+
+CA - certificate authority
+Instytucja zafuania publicznego odpowiedzialna za zarządzanie certyfiktami cyfrowymi. np. GlobalSign, DigiCert, Let's Encrypt
+
+Wydają różne rodzaje certyfikatów np. 
+DV - domain validation - weryfikuje czy wnioskodawca posiada kontrolę nad domeną np. mail na standardowe adresy przypisane do domeny, lub plik w publicznym katalogu domeny albo rekord txt w domenie
+OV - organization validation - CA weryfikuje tożsamość organizacji
+EV - extended validation - szczegółowa weryfikacja prawna i finansowa organizacji
+
+Ważność certyfikatu
+Not Before - określa od kiedy certyfikat jest ważny
+Not After - do kiedy
+
+Certyfikaty SSL/TLS są ważne do roku, Code Signing 1-3 lata, Certyfikaty osobiste 1-3 lata
+
+Dlaczego certyfikaty mają ważność?
+
+Bezpieczeństwo, regularne odnawianie certyfikatu
+
+Czy certyfikat można unieważnić? Można, CA dodaje wtedy certyfikat do listy "unieważnionych" certyfikatów, natomiast certyfikat sam w sobie pozostaje niezmieniony, więc klient
+korzystający z klienta musi sprawdzać te listy żeby sprawdzić czy certyfikat nie został unieważniony. 
+
+Sprawdza się je albo CRL (Certificate Revocation List) czyli lista unieważnionych
+certyfikatów publikowana przez CA (już raczej nieużywane) albo OCSP (Online Certificate Status Protocol) czyli klient wysyła zapytania do CA czy dany certyfikat nie został unieważniony
+
+SLAJD 4 RODZAJE CERTYFIKATÓW
+
+Certyfikaty SSL/TLS służą głównie do zabezpieczania połączeń i zapewnienia, że serwer, z którym się łączysz, jest tym, za kogo się podaje.
+Certyfikaty klienckie są używane do uwierzytelniania klienta, czyli zapewniają, że osoba lub aplikacja próbująca połączyć się z serwerem, ma do tego uprawnienia.
+Certyfikat podpisu kodu - do podpisywania kodu - tutaj klucz prywatny używany jest do podpisywania kodu a klucz publiczny do odszyfrowywania
+Certyfikaty email - S/MIME (secure multipurpose internet mail extensions) zapewnia, że wiadomość pochodzi od konkretnego nadawcy i że treść wiadomości nie została zmieniona od momentu jej wysłania.
+Tutaj również klucz prywatny służy do podpisywania wiadomościa, a klucz publiczny do weryfikowania podpisu.
+
+SLAJD 5 JAK WYGENEROWAĆ CERTYFIKAT?
+Żądanie wygenerowania certyfikatu CSR, najbardziej powszechny format to PKCS#10
+
+Co to jest PKCS? To Public Key Cryptography Standards czyli standardy dla kluczy kryptograficznych i certyfikatów. 
+np. formaty certyfikatów, podpisów cyfrowych, przechowywanie kluczy czy szyfrowanie danych.
+
+Tworzenie żądania: openssl req -new -newkey rsa:2048 -nodes -keyout private.key -out request.csr
+Szczegóły żądania: openssl req -in request.csr -text -noout
+
+Żądanie z SAN: openssl req -new -newkey rsa:2048 -keyout private.key -out request.csr -config conf/openssl.conf -nodes
+
+teraz przejść do root CA
+
+cd CA
+
+Teraz żeby otrzymać certyfikat musimy go podpisać CA:
+openssl ca -config ca.conf -extensions v3_ca -days 365 -notext -md sha256 -in ../request.csr -out ../localhost.crt
+
+Szczegóły certyfikatu:
+openssl x509 -in localhost.crt -text -noout
+
+Możemy też wygenerować certyfikat self-signed:
+openssl x509 -req -in request.csr -signkey private.key -out selfsigned.crt -days 365
+
+SLAJD 6 Jak certyfikaty zapewniają bezpieczeństwo aplikacjom?
+
+Jak działa szyfrowanie komunikacji? (na przykładzie komunikacji https)
+CLIENT HELLO: Client łączy się z serwerem i mówi zacznijmy bezpieczną sesję TLS (handshake), obsługuję takie wersje TLS,  takie algorytmy + losowy ciąg bitów
+SERVER HELLO: serwer odpowiada wybierając szyfrowanie, wysyła certyfikat publiczny do clienta + losowy ciąg bitów
+Client weryfikuje certyfikat serwera, czy jest podpisany przez zaufane CA, czy jest ważny, czy zgadza się domena
+
+Jeżeli wszystko jest ok to client generuje wspólny sekret i szyfruje go za pomocą klucza publicznego serwera.
+Serwer rozszyfrowuje sekret kluczem prywatnym. Na podstawie tego sekretu i losowych ciągów bitów generowane są wspólne klucze sesyjne używane do szyfrowania komunikacji.
+
+Jakie ataki?
+Man in the middle - skoro nasza komunikacja jest niezabezpieczona, nic nie stoi na przeszkodzie żeby ktoś po drodze ją przechwycił, przeczytał albo zmodyfikował.
+
+
+
+
+
